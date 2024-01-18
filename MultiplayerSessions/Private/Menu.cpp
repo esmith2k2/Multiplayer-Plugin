@@ -1,4 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Menu.h"
@@ -7,8 +6,9 @@
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
 
-void UMenu::MenuSetup(int32 NumberOfPublicConnections, FString TypeOfMatch) 
+void UMenu::MenuSetup(int32 NumberOfPublicConnections, FString TypeOfMatch, FString LobbyPath) 
 {
+    PathToLobby = FString::Printf(TEXT("%s?listen"), *LobbyPath);
     NumPublicConnections = NumberOfPublicConnections;
     MatchType = TypeOfMatch;
     AddToViewport();
@@ -49,6 +49,7 @@ void UMenu::MenuSetup(int32 NumberOfPublicConnections, FString TypeOfMatch)
 
 void UMenu::HostButtonClicked() 
 {
+    HostButton->SetIsEnabled(false);
     if(MultiplayerSessionsSubsystem)
     {
         MultiplayerSessionsSubsystem->CreateSession(NumPublicConnections, MatchType);
@@ -60,7 +61,11 @@ void UMenu::HostButtonClicked()
 
 void UMenu::JoinButtonClicked() 
 {
-    MultiplayerSessionsSubsystem->FindSessions(10000);
+    JoinButton->SetIsEnabled(false);
+    if(MultiplayerSessionsSubsystem)
+    {
+        MultiplayerSessionsSubsystem->FindSessions(10000);
+    }
 }
 
 
@@ -119,7 +124,7 @@ void UMenu::OnCreateSession(bool bWasSuccessful)
         UWorld* World = GetWorld();
         if(World)
             {
-            World->ServerTravel("/Game/ThirdPerson/Maps/Lobby?listen");
+            World->ServerTravel(PathToLobby);
             }
     }
     else
@@ -128,6 +133,7 @@ void UMenu::OnCreateSession(bool bWasSuccessful)
         {
         GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Red, FString(TEXT("Failed to create session.")));
         }
+        HostButton->SetIsEnabled(true);
     }
 }
 
@@ -149,6 +155,10 @@ void UMenu::OnFindSession(const TArray<FOnlineSessionSearchResult> &SessionResul
             MultiplayerSessionsSubsystem->JoinSession(Result);
         } 
     }
+    if(!bWasSuccessful || SessionResult.Num() == 0)
+    {
+        JoinButton->SetIsEnabled(true);
+    }
     
 }
 
@@ -169,6 +179,11 @@ void UMenu::OnJoinSession(EOnJoinSessionCompleteResult::Type Result)
                 PlayerController->ClientTravel(Address, ETravelType::TRAVEL_Absolute);
             }
         }
+    }
+
+    if(Result != EOnJoinSessionCompleteResult::Success)
+    {
+        JoinButton->SetIsEnabled(true);
     }
 }
 
